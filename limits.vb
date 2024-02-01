@@ -14,13 +14,9 @@ Function getMinTwoDArrayValue(arr) As Double
     getMinTwoDArrayValue = minValue
 End Function
 
-
-
 Sub Загрузить_данные()
 
     Dim e, element, i, j, fileIndex As Long
-    
-    Sheets("Объекты").Select
     
     Set macroWb = ActiveWorkbook
     
@@ -70,7 +66,7 @@ Sub Загрузить_данные()
                 If InStr(LCase(objectWb.Name), LCase(objects(e, 2))) Then currentObject = objects(e, 1)
                 If Not currentObject = Empty Then Exit For
             Next e
-        ' Debug.Print currentObject
+            ' Debug.Print currentObject
             If currentObject = Empty Then
                 MsgBox "Название объекта не обнаружено в справочнике. Проверьте название файла: " & objectWb.Name
                 GoTo errorExit
@@ -85,29 +81,27 @@ Sub Загрузить_данные()
             lastColumnObject = .Cells(1, 1).CurrentRegion.Columns.Count
     
             For j = 1 To lastColumnObject
-                For e = 1 To UBound(landfillTitles)
-                    ' If InStr(LCase(.Cells(1, j)), LCase(landfillTitles(e, 1))) Then landfillTitleColumn = j 'Else Debug.Print "no"
-                    If LCase(.Cells(1, j)) = LCase(landfillTitles(e, 1)) Then landfillTitleColumn = j 'Else Debug.Print "no"
+                For e = LBound(landfillTitles) To UBound(landfillTitles)
+                    If LCase(.Cells(1, j)) = LCase(landfillTitles(e, 1)) Then landfillTitleColumn = j
                 Next e
-                For e = 1 To UBound(weight1tTitles)
-                '    If InStr(LCase(.Cells(1, j)), LCase(weight1tTitles(e, 1))) Then weightObjectTitleColumn = j 'Else Debug.Print "no"
-                    If LCase(.Cells(1, j)) = LCase(weight1tTitles(e, 1)) Then weightObjectTitleColumn = j 'Else Debug.Print "no"
+                For e = LBound(weight1tTitles) To UBound(weight1tTitles)
+                    If LCase(.Cells(1, j)) = LCase(weight1tTitles(e, 1)) Then weightObjectTitleColumn = j
                 Next e
-                For e = 1 To UBound(weight2Titles)
-                '   If InStr(LCase(.Cells(1, j)), LCase(weight2Titles(e, 1))) Then weightLandfillTitleColumn = j 'Else Debug.Print "no"
-                    If LCase(.Cells(1, j)) = LCase(weight2Titles(e, 1)) Then weightLandfillTitleColumn = j 'Else Debug.Print "no"
+                For e = LBound(weight2Titles) To UBound(weight2Titles)
+                    If LCase(.Cells(1, j)) = LCase(weight2Titles(e, 1)) Then weightLandfillTitleColumn = j
                 Next e
             Next j
-            If landfillTitleColumn = "" Then
-                MsgBox "Обнаружен заголовок столбца Полигон, которого нет в справочнике"
+            
+            If landfillTitleColumn = Empty Then
+                MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Полигон, которого нет в справочнике"
                 GoTo errorExit
             End If
-            If weightObjectTitleColumn = "" Then
-                MsgBox "Обнаружен заголовок столбца Вес объекта, которого нет в справочнике"
+            If weightObjectTitleColumn = Empty Then
+                MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Вес объекта, которого нет в справочнике"
                 GoTo errorExit
             End If
-            If weightLandfillTitleColumn = "" Then
-                MsgBox "Обнаружен заголовок столбца Вес полигона, которого нет в справочнике"
+            If weightLandfillTitleColumn = Empty Then
+                MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Вес объекта, которого нет в справочнике"
                 GoTo errorExit
             End If
 
@@ -137,6 +131,10 @@ Sub Загрузить_данные()
             maxFileDate = CDate(getMaxTwoDArrayValue(datesOfObject))
             If fileIndex = 1 Then lastDateTable = maxFileDate
             If maxFileDate > lastDateTable Then lastDateTable = maxFileDate 'максимальная дата, чтобы понять надо ли к графикам добавлять строку с новым днем или нет
+            If lastDateTable > Date Then
+                MsgBox "В файле " & objectWb.Name & " обнаружены данные за будущие даты (" & lastDateTable & ")"
+                GoTo errorExit
+            End If
 
             For e = LBound(weights1Object) To UBound(weights1Object) 'перевод кг в т
                 If weights1Object(e, 1) < 0 Then
@@ -195,7 +193,7 @@ Sub Загрузить_данные()
             For j = minDateCell.Column To maxDateCell.Column + 1 Step 2 'столбец с нужной датой и массой объекта
                 For i = 0 To landfillsCount - 1 'цикл по названиям полигонов на итоговом листе в столбце D
                     For e = LBound(weights1Object) To UBound(weights1Object)
-                        tempLandfill = ""
+                        tempLandfill = Empty
                         For element = 1 To UBound(objects) 'цикл чтобы определить какой полигон написан в реестре объекта
                             If LCase(landfillsOfObject(e, 1)) = LCase(objects(element, 2)) Then tempLandfill = objects(element, 1)
                         Next element
@@ -221,6 +219,7 @@ Sub Загрузить_данные()
                     sumW2 = 0
                 Next i
             Next j
+            
         End With
     
         objectWb.Close SaveChanges:=False
@@ -250,7 +249,6 @@ Sub Загрузить_данные()
                 Exit For
             End If
         Next j
-    
     End With
     
     With Sheets("Распределение 1 полугодие")
@@ -259,19 +257,10 @@ Sub Загрузить_данные()
         
         Set findLandfillColumnTitle = .Range(.Cells(1, 1), .Cells(lastRowSplit, lastColumnSplit)).Find("Полигон")
         If Not findLandfillColumnTitle Is Nothing Then
-            objectCounter = 1
-            counter = 1
             For i = 3 To lastRowSplit 'защита от кривых рук
-                ' a = (counter - 1) Mod 5
-                ' If counter > 1 And (counter - 1) Mod 5 = 0 Then objectCounter = objectCounter + landfillsCount
-                ' .Cells(i, findLandfillColumnTitle.Column + 2) = .Cells(objectCounter + 2, 1)
-                ' .Cells(i, findLandfillColumnTitle.Column + 3) = .Cells(objectCounter + 2, 2)
-                ' .Cells(i, findLandfillColumnTitle.Column + 1) = .Cells(i, findLandfillColumnTitle.Column + 2) & .Cells(i, findLandfillColumnTitle.Column) & .Cells(i, findLandfillColumnTitle.Column + 3)
-                ' counter = counter + 1
                 If Not .Cells(i, 1) = "" Then obj = .Cells(i, 1)
                 If Not .Cells(i, 2) = "" Then objType = .Cells(i, 2)
                 .Cells(i, findLandfillColumnTitle.Column + 2) = obj
-                '.Cells(i, findLandfillColumnTitle.Column + 3) = objType
                 .Cells(i, findLandfillColumnTitle.Column + 1) = obj & .Cells(i, findLandfillColumnTitle.Column) & objType
             Next i
         Else
@@ -295,24 +284,53 @@ Sub Загрузить_данные()
         End If
     End With
     
+    Sheets("Графики").Select
+    
     '-------------------- Умные таблицы ---------------------------------------------------------------------------------------
     
     With macroWb.Worksheets("Графики")
+        lastRowChart1 = .ListObjects("ВвозНовыйСвет").ListRows.Count
+        lastDateChart = .ListObjects("ВвозНовыйСвет").ListColumns("Дата").DataBodyRange.Cells(lastRowChart1)
     
-        lastRowGraph1 = .ListObjects("ВвозНовыйСвет").ListRows.Count
-        lastDateGraph = .ListObjects("ВвозНовыйСвет").ListColumns("Дата").DataBodyRange.Cells(lastRowGraph1)
+        chartTitles = Array("ВвозНовыйСвет", "ВвозПолигонТБО", "ВвозАвтоБеркут", "ВвозЭкоПлант", "ВвозУКЛО")
 
-        graphTables = Array("ВвозНовыйСвет", "ВвозПолигонТБО", "ВвозАвтоБеркут", "ВвозЭкоПлант", "ВвозУКЛО")
-    
-        If lastDateTable > lastDateGraph Then
-            For Each e In graphTables
-                .ListObjects(e).ListRows.Add
-                .ListObjects(e).ListColumns("Дата").DataBodyRange.Cells(lastRowGraph1 + 1).Value = lastDateGraph + 1
-            Next e
+        If lastDateTable > lastDateChart Then
+            If lastDateTable = Date And lastDateTable - lastDateChart > 0 Then lastDateTable = lastDateTable - 1
+            For dayCount = 1 To lastDateTable - lastDateChart
+                For i = LBound(chartTitles) To UBound(chartTitles)
+                    .ListObjects(chartTitles(i)).ListRows.Add
+                    .ListObjects(chartTitles(i)).ListColumns("Дата").DataBodyRange.Cells(lastRowChart1 + dayCount).Value = lastDateChart + dayCount
+                Next i
+            Next dayCount
         End If
+    
+    '-------------------- Умные таблицы конец ---------------------------------------------------------------------------------------
+    
+    '-------------------- Графики ---------------------------------------------------------------------------------------
+    
+        Dim landfillNames As Variant
+        landfillNames = Sheets("Справочник").ListObjects("LandfillsList").ListColumns("Полигоны").DataBodyRange.Value
+        'lastRowCharts = .Cells(Rows.Count, 1).End(xlUp).Row
+        lastRowCharts = .Cells.SpecialCells(xlLastCell).Row
+        lastColumnCharts = .Cells.SpecialCells(xlLastCell).Column
+        
+        For i = 1 To lastRowCharts 'перемещение графиков чтобы все красиво
+            For e = LBound(landfillNames, 1) To UBound(landfillNames, 1)
+                If .Cells(i, 1) = landfillNames(e, 1) Then
+                    For Each chrt In .ChartObjects
+                        If InStr(chrt.Chart.ChartTitle.Text, landfillNames(e, 1)) Then
+                            chrt.Top = .Cells(i + 1, lastColumnCharts + 2).Top
+                            chrt.Left = .Cells(i + 1, lastColumnCharts + 2).Left
+                        End If
+                    Next chrt
+                End If
+            Next e
+        Next i
         
     End With
-    '-------------------- Умные таблицы конец ---------------------------------------------------------------------------------------
+    
+    '-------------------- Графики конец ---------------------------------------------------------------------------------------
+    
     
 errorExit:
     With Application
@@ -320,18 +338,5 @@ errorExit:
         .DisplayAlerts = True
         .Calculation = xlCalculationAutomatic
     End With
-    
+
 End Sub
-    
-    
-
-
-
-
-
-
-
-
-
-
-
