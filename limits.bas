@@ -1,3 +1,5 @@
+'i.zabolotny@spb-neo.ru
+
 Function getMaxTwoDArrayValue(arr) As Double
     maxValue = arr(LBound(arr), 1)
     For i = LBound(arr, 1) To UBound(arr, 1)
