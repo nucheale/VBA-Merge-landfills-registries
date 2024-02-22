@@ -14,6 +14,15 @@ Function getMinTwoDArrayValue(arr) As Double
     getMinTwoDArrayValue = minValue
 End Function
 
+Function twoDimArrayToOneDim(oldArr)
+    Dim newArr As Variant
+    ReDim newArr(1 To UBound(oldArr, 1) * UBound(oldArr, 2))
+    For i = LBound(oldArr, 1) To UBound(oldArr, 1)
+        newArr(i) = oldArr(i, 1)
+    Next i
+    twoDimArrayToOneDim = newArr
+End Function
+
 Sub Загрузить_данные()
 
     Dim e, element, i, j, fileIndex As Long
@@ -123,8 +132,8 @@ Sub Загрузить_данные()
 
             'debug.print "datesOfObject: " & ubound(datesOfObject), "landfillsOfObject: " & ubound(landfillsOfObject), "weights1Object: " & ubound(weights1Object), "weights2Object: " & ubound(weights2Object),
             
-            For e = LBound(datesOfObject) To UBound(datesOfObject) 'перевод дат в формат даты
-                If datesOfObject(e, 1) > 40000 Then datesOfObject(e, 1) = DateValue(datesOfObject(e, 1))
+            For e = LBound(datesOfObject, 1) To UBound(datesOfObject, 1) 'перевод дат в формат даты
+                If IsDate(datesOfObject(e, 1)) Then datesOfObject(e, 1) = CDate(datesOfObject(e, 1))
             Next e
             
             minFileDate = CDate(getMinTwoDArrayValue(datesOfObject))
@@ -168,11 +177,23 @@ Sub Загрузить_данные()
                     End If
                 End If
             
-                Set minDateCell = .Range(.Cells(1, 1), .Cells(1, lastcolumn)).Find(What:=minFileDate, LookIn:=xlValues, LookAt:=xlWhole)
-                Set maxDateCell = .Range(.Cells(1, 1), .Cells(1, lastcolumn)).Find(What:=maxFileDate, LookIn:=xlValues, LookAt:=xlWhole)
+                allDates = .Range(.Cells(1, 1), .Cells(1, lastcolumn))
+                minDateColumn = 0
+                maxDateColumn = 0
+                For i = LBound(allDates, 2) To UBound(allDates, 2)
+                    If IsDate(allDates(1, i)) Then allDates(1, i) = CDate(allDates(1, i))
+                    If allDates(1, i) = minFileDate Then minDateColumn = i - 1
+                    If allDates(1, i) = maxFileDate Then maxDateColumn = i - 1
+                    If Not minDateColumn = 0 And Not maxDateColumn = 0 Then Exit For
+                Next i
+                    
+                ' Set minDateCell = .Range(.Cells(1, 1), .Cells(1, lastcolumn)).Find(What:=minFileDate, LookIn:=xlValues, LookAt:=xlWhole)
+                ' Set maxDateCell = .Range(.Cells(1, 1), .Cells(1, lastcolumn)).Find(What:=maxFileDate, LookIn:=xlValues, LookAt:=xlWhole)
+                ' If minDateCell Is Nothing Then Set minDateCell = .Range(.Cells(1, 1), .Cells(1, lastcolumn)).Find(What:=minFileDate, LookIn:=xlFormulas, LookAt:=xlWhole)
+                ' If maxDateCell Is Nothing Then Set maxDateCell = .Range(.Cells(1, 1), .Cells(1, lastcolumn)).Find(What:=maxFileDate, LookIn:=xlFormulas, LookAt:=xlWhole)
                 
-                If Not minDateCell Is Nothing And Not maxDateCell Is Nothing Then
-                    For j = minDateCell.Column To maxDateCell.Column + 1 'очистка старых данных по объекту перед заполнением новых
+                If Not minDateColumn = 0 And Not maxDateColumn = 0 Then
+                    For j = minDateColumn To maxDateColumn + 1 'очистка старых данных по объекту перед заполнением новых
                         For i = 3 To lastrow
                             If .Cells(i, 2) = currentObject Then
                                 For n = 0 To landfillsCount - 1
@@ -181,6 +202,10 @@ Sub Загрузить_данные()
                             End If
                         Next i
                     Next j
+
+                Else
+                    MsgBox "Не найдены минимальная/максимальная даты. minFileDate = " & minFileDate & ", maxFileDate = " & maxFileDate
+                    GoTo errorExit
                 End If
             
             End With
@@ -190,7 +215,7 @@ Sub Загрузить_данные()
             sumW2 = 0
             tempLandfill = Empty
             
-            For j = minDateCell.Column To maxDateCell.Column + 1 Step 2 'столбец с нужной датой и массой объекта
+            For j = minDateColumn To maxDateColumn + 1 Step 2 'столбец с нужной датой и массой объекта
                 For i = 0 To landfillsCount - 1 'цикл по названиям полигонов на итоговом листе в столбце D
                     For e = LBound(weights1Object) To UBound(weights1Object)
                         tempLandfill = Empty
@@ -289,43 +314,117 @@ Sub Загрузить_данные()
     '-------------------- Умные таблицы ---------------------------------------------------------------------------------------
     
     With macroWb.Worksheets("Графики")
-        lastRowChart1 = .ListObjects("ВвозНовыйСвет").ListRows.Count
-        lastDateChart = .ListObjects("ВвозНовыйСвет").ListColumns("Дата").DataBodyRange.Cells(lastRowChart1)
-    
-        chartTitles = Array("ВвозНовыйСвет", "ВвозПолигонТБО", "ВвозАвтоБеркут", "ВвозЭкоПлант", "ВвозУКЛО")
+
+        chartTitlesTwoDim = Sheets("Справочник").ListObjects("LandfillsList").ListColumns("Для графиков").DataBodyRange.Value
+        ' chartTitles = Array("ВвозНовыйСвет", "ВвозПолигонТБО", "ВвозАвтоБеркут", "ВвозЭкоПлант", "ВвозУКЛО")
+
+        chartTitles = twoDimArrayToOneDim(chartTitlesTwoDim) 'двумерный массив в одномерный
+        
+        ' Function renamePivotTable(ByVal tbl As Variant, ByVal newName As String, startCounter)
+        '     If obj.ShowAutoFilter Then
+        '         obj.Name = newName & startCounter
+        '         startCounter = startCounter + 1
+        '     End If
+        ' End Function
+
+        realChartNames = False
+        For i = 1 To 2
+            counter = 1
+            If realChartNames = False Then
+                For Each obj In .ListObjects
+                    If obj.ShowAutoFilter Then
+                        obj.Name = "ВременноеНазвание" & counter
+                        counter = counter + 1
+                    End If
+                    ' renamePivotTable(obj, "ВременноеНазвание" & counter, 1)
+                Next obj
+            ElseIf realChartNames = True Then
+                For Each obj In .ListObjects
+                    If obj.ShowAutoFilter Then
+                        obj.Name = chartTitles(counter)
+                        counter = counter + 1
+                    End If
+                Next obj
+            End If
+            realChartNames = True
+        Next i
+
+        lastRowChart = .ListObjects(chartTitles(1)).ListRows.Count
+        lastDateChart = .ListObjects(chartTitles(1)).ListColumns("Дата").DataBodyRange.Cells(lastRowChart)
+        For e = LBound(chartTitles) To UBound(chartTitles)
+            tempLastRowChart = .ListObjects(chartTitles(e)).ListRows.Count
+            tempLastDateChart = .ListObjects(chartTitles(e)).ListColumns("Дата").DataBodyRange.Cells(tempLastRowChart)
+            If Not tempLastRowChart = lastRowChart Then
+                MsgBox "В графиках обнаружено разное количество дат. Проверьте все графики, чтобы везде были полностью одинаковые даты."
+                GoTo errorExit
+            End If
+            If Not tempLastDateChart = lastDateChart Then
+                MsgBox "В графиках обнаружены несовпащающие последние даты. Проверьте все графики, чтобы везде были полностью одинаковые даты."
+                GoTo errorExit
+            End If
+        Next e
 
         If lastDateTable > lastDateChart Then
             If lastDateTable = Date And lastDateTable - lastDateChart > 0 Then lastDateTable = lastDateTable - 1
-            For dayCount = 1 To lastDateTable - lastDateChart
-                For i = LBound(chartTitles) To UBound(chartTitles)
+            For i = LBound(chartTitles) To UBound(chartTitles)
+                For dayCount = 1 To lastDateTable - lastDateChart
                     .ListObjects(chartTitles(i)).ListRows.Add
-                    .ListObjects(chartTitles(i)).ListColumns("Дата").DataBodyRange.Cells(lastRowChart1 + dayCount).Value = lastDateChart + dayCount
-                Next i
-            Next dayCount
+                    .ListObjects(chartTitles(i)).ListColumns("Дата").DataBodyRange.Cells(lastRowChart + dayCount).Value = lastDateChart + dayCount
+                Next dayCount
+            Next i
         End If
-    
+
+        monthTable = Month(CDate(lastDateTable))
+        monthChart = Month(CDate(lastDateChart))
+        If monthTable > monthChart Then 'если новый месяц то удаляем старые даты для графиков (после добавления новых дат, но текущий месяц на графике определяем заранее)
+            For e = LBound(chartTitles) To UBound(chartTitles)
+                For n = .ListObjects(chartTitles(e)).ListRows.Count To 1 Step -1
+                    tempMonth = Month(CDate(.ListObjects(chartTitles(e)).ListColumns("Дата").DataBodyRange.Cells(n).Value))
+                    If tempMonth = monthChart Then .ListObjects(chartTitles(e)).ListRows(n).Delete
+                Next n
+            Next e
+        End If
     '-------------------- Умные таблицы конец ---------------------------------------------------------------------------------------
     
     '-------------------- Графики ---------------------------------------------------------------------------------------
     
         Dim landfillNames As Variant
         landfillNames = Sheets("Справочник").ListObjects("LandfillsList").ListColumns("Полигоны").DataBodyRange.Value
-        'lastRowCharts = .Cells(Rows.Count, 1).End(xlUp).Row
         lastRowCharts = .Cells.SpecialCells(xlLastCell).Row
         lastColumnCharts = .Cells.SpecialCells(xlLastCell).Column
         
+        lastRowChart = .ListObjects(chartTitles(1)).ListRows.Count
+        oneDayWidth = 50
+        minChartWidth = 470
         For i = 1 To lastRowCharts 'перемещение графиков чтобы все красиво
             For e = LBound(landfillNames, 1) To UBound(landfillNames, 1)
                 If .Cells(i, 1) = landfillNames(e, 1) Then
+                ' If InStr(.Cells(i, 1), landfillNames(e, 1)) Then
+                    .Cells(i, 2) = "Статистика ввоза на " & landfillNames(e, 1)
                     For Each chrt In .ChartObjects
                         If InStr(chrt.Chart.ChartTitle.Text, landfillNames(e, 1)) Then
                             chrt.Top = .Cells(i + 1, lastColumnCharts + 2).Top
                             chrt.Left = .Cells(i + 1, lastColumnCharts + 2).Left
+                            chrt.Chart.ChartTitle.Text = "Статистика ввоза на " & landfillNames(e, 1)
+                            chrt.Height = 510
+                            chrt.Width = WorksheetFunction.Max(minChartWidth, lastRowChart * oneDayWidth)
                         End If
                     Next chrt
                 End If
             Next e
         Next i
+
+        ' For Each chrt In .ChartObjects 'удаление нулевых объектов с легенды
+        '     chrt.Legend.Delete
+        '     chrt.SetElement(msoElementLegendBottom)
+        '     for i = 1 to chrt.Legend.LegendEntries.count step -1
+        '         sumObjChart = .ListObjects("titles").ListColumns("Полигон").DataBodyRange.Value
+        '         sumObjChart = cdbl(chrt.Name[[#Totals];[chrt.Legend.LegendEntries(i).LegendKey.text]])
+        '         ВвозЭкоПлант[[#Totals],[Волхонка АО ""Невский экологический оператор""]]
+        '         debug.print i & ": " & sumObjChart
+        '         if sumObjChart <= 0 then chrt.Legend.LegendEntries(i).Delete
+        '     next i
+        ' Next chrt
         
     End With
     
