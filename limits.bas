@@ -415,18 +415,48 @@ Sub Загрузить_данные()
                 End If
             Next e
         Next i
+        
+        
+        '----------------удаление нулевых объектов из легенды-----------------------
 
-        ' For Each chrt In .ChartObjects 'удаление нулевых объектов с легенды
-        '     chrt.Legend.Delete
-        '     chrt.SetElement(msoElementLegendBottom)
-        '     for i = 1 to chrt.Legend.LegendEntries.count step -1
-        '         sumObjChart = .ListObjects("titles").ListColumns("Полигон").DataBodyRange.Value
-        '         sumObjChart = cdbl(chrt.Name[[#Totals];[chrt.Legend.LegendEntries(i).LegendKey.text]])
-        '         ВвозЭкоПлант[[#Totals],[Волхонка АО ""Невский экологический оператор""]]
-        '         debug.print i & ": " & sumObjChart
-        '         if sumObjChart <= 0 then chrt.Legend.LegendEntries(i).Delete
-        '     next i
-        ' Next chrt
+        For Each chrt In .ChartObjects 'добавляем легенду заново
+            chrt.Chart.SetElement (msoElementLegendBottom)
+            chrt.Chart.legend.Delete
+            chrt.Chart.SetElement (msoElementLegendBottom)
+        Next chrt
+
+        For Each tbl In .ListObjects 'заголовки всех таблиц
+            tblCounter = 1
+            Dim headers As Variant
+            ReDim headers(1 To tbl.ListColumns.Count, 1 To UBound(chartTitles))
+            For i = LBound(headers, 1) To UBound(headers, 1)
+                headers(i, tblCounter) = tbl.ListColumns(i).Name
+            Next i
+            tblCounter = tblCounter + 1
+        Next tbl
+        
+        For Each chrt In .ChartObjects
+            chrt.Chart.legend.LegendEntries(UBound(headers, 1) - 1).Delete 'удаление Итого из легенды
+        Next chrt
+        
+        For i = LBound(chartTitles) To UBound(chartTitles)
+            For n = UBound(headers) - 1 To LBound(headers) + 1 Step -1
+                tempSum = 0
+                Set sumColumn = .ListObjects(i).ListColumns(n)
+                For Each cell In sumColumn.DataBodyRange
+                    If Not IsError(cell) Then tempSum = tempSum + CDbl(cell)
+                Next cell
+                If tempSum = 0 Then
+                    For Each chrt In .ChartObjects
+                        If InStr(chrt.Chart.ChartTitle.Text, landfillNames(i, 1)) Then 'находим нужный график, т.к. у графиков и таблиц не совпадают индексы
+                            chrt.Chart.legend.LegendEntries(n - 1).Delete
+                        End If
+                    Next chrt
+                End If
+            Next n
+        Next i
+        
+        '----------------конец удаление нулевых объектов из легенды-----------------------
         
     End With
     
