@@ -159,7 +159,7 @@ Sub Загрузить_данные()
                 lastrow = .Cells(1, 1).CurrentRegion.Rows.Count
                 Set findCellObject = .Range(.Cells(1, 2), .Cells(lastrow, 2)).Find(currentObject) 'ячейка с текущим объектом на итоговом листе
                 If findCellObject Is Nothing Then
-                    MsgBox "Не найдено название площадки (определяется по названию файла) из справочника на листе Объекты. Нужно проверить справочник и название файла."
+                    MsgBox "Не найдено название МПС / МСС (определяется по названию файла) из справочника на листе Объекты. Нужно проверить справочник и название файла."
                     GoTo errorExit
                 End If
             
@@ -168,6 +168,10 @@ Sub Загрузить_данные()
                 ' Debug.Print macroWb.Worksheets("Объекты").Cells(findCellObject.Row + i, findCellObject.Column + 2).Value
 
                 If minFileDate < 45292 Or maxFileDate > 45657 Then 'проверка ошибок с датами в файле объекта
+                    If Not IsNumeric(minFileDate) Then
+                        MsgBox "В файле " & objectWb.Name & " не обнаружены записи с вывозом"
+                        If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
+                    End If
                     a = MsgBox("В файле " & objectWb.Name & " обнаружены записи не за " & Year(Date) & " год, продолжить?", vbQuestion + vbYesNo + vbDefaultButton2)
                     If a = vbYes Then
                         If minFileDate < 45292 Then minFileDate = CDate("01.01." & Year(Date)) '1 января текущего года
@@ -246,7 +250,8 @@ Sub Загрузить_данные()
             Next j
             
         End With
-    
+        
+nextFile:
         objectWb.Close SaveChanges:=False
         fileIndex = fileIndex + 1
     Next 'конец for each
@@ -419,7 +424,7 @@ Sub Загрузить_данные()
 
         For Each chrt In .ChartObjects 'добавляем легенду заново
             chrt.Chart.SetElement (msoElementLegendBottom)
-            chrt.Chart.legend.Delete
+            chrt.Chart.Legend.Delete
             chrt.Chart.SetElement (msoElementLegendBottom)
         Next chrt
 
@@ -434,7 +439,7 @@ Sub Загрузить_данные()
         Next tbl
         
         For Each chrt In .ChartObjects
-            chrt.Chart.legend.LegendEntries(UBound(headers, 1) - 1).Delete 'удаление Итого из легенды
+            chrt.Chart.Legend.LegendEntries(UBound(headers, 1) - 1).Delete 'удаление Итого из легенды
         Next chrt
         
         For i = LBound(chartTitles) To UBound(chartTitles)
@@ -447,7 +452,7 @@ Sub Загрузить_данные()
                 If tempSum = 0 Then
                     For Each chrt In .ChartObjects
                         If InStr(chrt.Chart.ChartTitle.Text, landfillNames(i, 1)) Then 'находим нужный график, т.к. у графиков и таблиц не совпадают индексы
-                            chrt.Chart.legend.LegendEntries(n - 1).Delete
+                            chrt.Chart.Legend.LegendEntries(n - 1).Delete
                         End If
                     Next chrt
                 End If
