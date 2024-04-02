@@ -27,7 +27,7 @@ Sub Загрузить_данные()
 
     Dim e, element, i, j, fileIndex As Long
     
-    Set macroWb = ActiveWorkbook
+    Set macroWb = ThisWorkbook
     
     filesToOpen = Application.GetOpenFilename(FileFilter:="All files (*.*), *.*", MultiSelect:=True, Title:="Выберите файлы")
     If TypeName(filesToOpen) = "Boolean" Then Exit Sub
@@ -138,12 +138,17 @@ Sub Загрузить_данные()
             
             minFileDate = CDate(getMinTwoDArrayValue(datesOfObject))
             maxFileDate = CDate(getMaxTwoDArrayValue(datesOfObject))
+            If minFileDate = 0 or maxFileDate = 0 Then
+                MsgBox "В файле " & objectWb.Name & " не обнаружены записи с вывозом" & vbLf & "minFileDate: " & minFileDate & vbLf & "maxFileDate: " & maxFileDate
+                If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
+            End If
+
             If fileIndex = 1 Then lastDateTable = maxFileDate
-            If maxFileDate > lastDateTable Then lastDateTable = maxFileDate 'максимальная дата, чтобы понять надо ли к графикам добавлять строку с новым днем или нет
-            If lastDateTable > Date Then
+            If maxFileDate > Date Then
                 MsgBox "В файле " & objectWb.Name & " обнаружены данные за будущие даты (" & lastDateTable & ")"
                 GoTo errorExit
             End If
+            If maxFileDate > lastDateTable Then lastDateTable = maxFileDate 'максимальная дата, чтобы понять надо ли к графикам добавлять строку с новым днем или нет
 
             For e = LBound(weights1Object) To UBound(weights1Object) 'перевод кг в т
                 If weights1Object(e, 1) < 0 Then
@@ -167,29 +172,57 @@ Sub Загрузить_данные()
                 ' Debug.Print findCellObject.Row
                 ' Debug.Print macroWb.Worksheets("Объекты").Cells(findCellObject.Row + i, findCellObject.Column + 2).Value
 
-                If minFileDate < 45292 Or maxFileDate > 45657 Then 'проверка ошибок с датами в файле объекта
-                    If Not IsNumeric(minFileDate) Then
-                        MsgBox "В файле " & objectWb.Name & " не обнаружены записи с вывозом"
-                        If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
-                    End If
-                    a = MsgBox("В файле " & objectWb.Name & " обнаружены записи не за " & Year(Date) & " год, продолжить?", vbQuestion + vbYesNo + vbDefaultButton2)
-                    If a = vbYes Then
-                        If minFileDate < 45292 Then minFileDate = CDate("01.01." & Year(Date)) '1 января текущего года
-                        If maxFileDate > 45657 Then maxFileDate = CDate("31.12." & Year(Date)) '31 декабря текущего года
-                    Else
-                        GoTo errorExit
-                    End If
-                End If
-            
+                currentYear = Year(Date)
+                ' If minFileDate < DateSerial(currentYear, 1, 1) Then 'проверка ошибок с датами в файле объекта (если данные за прошлый год)
+                '     a = MsgBox("В файле " & objectWb.Name & " обнаружены данные за " & Year(minFileDate) & " год, продолжить?" & vbLf & "Данные за этот период не будут пересчитаны.", vbQuestion + vbYesNo + vbDefaultButton2)
+                '     If a = vbYes Then
+                '         If minFileDate < DateSerial(currentYear, 1, 1) Then minFileDate = DateSerial(currentYear, 1, 1) '1 января текущего года
+                '         If minFileDate > maxFileDate Then    
+                '         MsgBox "В файле " & objectWb.Name & "не найдено данных за "                
+                '         Минимальная дата больше максимальной
+                '     Else
+                '         GoTo errorExit
+                '     End If
+                ' End If
+
+                If not Year(minFileDate) = Year(maxFileDate) Then
+                    a = MsgBox("В файле " & objectWb.Name & " обнаружены данные за разные годы: " & Year(minFileDate) & " и " & Year(maxFileDate) & ", пропустить файл?", vbQuestion + vbYesNo + vbDefaultButton2)
+                    If a = vbYes Then GoTo nextFile Else GoTo errorExit
+                End if
+                ' If not Year(minFileDate) = currentYear or not Year(maxFileDate) = currentYear Then
+                '     a = MsgBox("В файле " & objectWb.Name & " обнаружены данные не за текущий год, продолжить?", vbQuestion + vbYesNo + vbDefaultButton2)
+                '     If a = vbYes Then 
+                ' End if
+                
                 allDates = .Range(.Cells(1, 1), .Cells(1, lastcolumn))
                 minDateColumn = 0
                 maxDateColumn = 0
-                For i = LBound(allDates, 2) To UBound(allDates, 2)
-                    If IsDate(allDates(1, i)) Then allDates(1, i) = CDate(allDates(1, i))
-                    If allDates(1, i) = minFileDate Then minDateColumn = i - 1
-                    If allDates(1, i) = maxFileDate Then maxDateColumn = i - 1
-                    If Not minDateColumn = 0 And Not maxDateColumn = 0 Then Exit For
-                Next i
+                If Not minFileDate = maxFileDate Then
+                    For i = LBound(allDates, 2) To UBound(allDates, 2)
+                        if isdate(allDates(1, i)) then allDates(1, i) = CDate(allDates(1, i))
+                        If allDates(1, i) = minFileDate Then
+                            minDateColumn = i
+                            Exit For
+                        End If
+                    Next i
+                    For i = minDateColumn To UBound(allDates, 2)
+                        if isdate(allDates(1, i)) then allDates(1, i) = CDate(allDates(1, i))
+                        If allDates(1, i) = maxFileDate Then
+                            maxDateColumn = i
+                            Exit For
+                        End If
+                    Next i
+                Else
+                    For i = LBound(allDates, 2) To UBound(allDates, 2)
+                        if isdate(allDates(1, i)) then allDates(1, i) = CDate(allDates(1, i))
+                        If allDates(1, i) = minFileDate Then
+                            minDateColumn = i
+                            maxDateColumn = i
+                            Exit For
+                        End If
+                    Next i
+                End If
+ 
                     
                 ' Set minDateCell = .Range(.Cells(1, 1), .Cells(1, lastcolumn)).Find(What:=minFileDate, LookIn:=xlValues, LookAt:=xlWhole)
                 ' Set maxDateCell = .Range(.Cells(1, 1), .Cells(1, lastcolumn)).Find(What:=maxFileDate, LookIn:=xlValues, LookAt:=xlWhole)
@@ -206,9 +239,8 @@ Sub Загрузить_данные()
                             End If
                         Next i
                     Next j
-
                 Else
-                    MsgBox "Не найдены минимальная/максимальная даты. minFileDate = " & minFileDate & ", maxFileDate = " & maxFileDate
+                    MsgBox "Не найдены столбцы минимальной или максимальной даты. minFileDate = " & minFileDate & ", maxFileDate = " & maxFileDate
                     GoTo errorExit
                 End If
             
