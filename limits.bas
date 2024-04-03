@@ -23,23 +23,31 @@ Function twoDimArrayToOneDim(oldArr)
     twoDimArrayToOneDim = newArr
 End Function
 
+Function addErrorFile(resultString, currentFilename)
+    If Not InStr(resultString, currentFilename) Then resultString = resultString & vbLf & currentFilename
+    addErrorFile = resultString
+End Function
+
 Sub Загрузить_данные()
 
-    Dim e, element, i, j, fileIndex As Long
+    Dim e&, element&, i&, j&, fileIndex%
+    Dim errorFiles$
+    errorFiles = Empty
     
     Set macroWb = ThisWorkbook
+    macroWb.Worksheets("Графики").Activate
     
     filesToOpen = Application.GetOpenFilename(FileFilter:="All files (*.*), *.*", MultiSelect:=True, Title:="Выберите файлы")
     If TypeName(filesToOpen) = "Boolean" Then Exit Sub
     
-    Application.Calculation = xlCalculationManual
-    Application.AskToUpdateLinks = False
-    Application.DisplayAlerts = False
-
+    With Application
+        .Calculation = xlCalculationManual
+        .AskToUpdateLinks = False
+        .DisplayAlerts = False
+    End With
     
     With macroWb.Worksheets("Справочник")
         landfillsCount = .ListObjects("LandfillsList").ListRows.Count
-        Dim objects, landfillTitles, weight1tTitles, weight2Titles As Variant
         objects = .ListObjects("objects").DataBodyRange.Value 'названия объектов, два столбца
         landfillTitles = .ListObjects("titles").ListColumns("Полигон").DataBodyRange.Value 'Range("objects[Полигон]").Value 'названия ячейки где указывают полигон
         weight1tTitles = .ListObjects("titles").ListColumns("Вес на погрузке").DataBodyRange.Value 'названия ячейки где указывают вес на погрузке (на МСС/МПС)
@@ -77,8 +85,9 @@ Sub Загрузить_данные()
             Next e
             ' Debug.Print currentObject
             If currentObject = Empty Then
-                MsgBox "Название объекта не обнаружено в справочнике. Проверьте название файла: " & objectWb.Name
-                GoTo errorExit
+                MsgBox "Название объекта не обнаружено в справочнике. Проверьте название файла " & objectWb.Name & vbLf & "Файл будет пропущен"
+                errorFiles = addErrorFile(errorFiles, objectWb.Name)
+                If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
             End If
     
             Sort = False
@@ -88,31 +97,56 @@ Sub Загрузить_данные()
     
         With objectWb.Worksheets("Вывоз")
             lastColumnObject = .Cells(1, 1).CurrentRegion.Columns.Count
-    
+            landfillTitleColumn = Empty
+            weightObjectTitleColumn = Empty
+            weightLandfillTitleColumn = Empty
+            sumTitleColumns = Empty 'для проверки нашлись ли названия столбцов или нет
             For j = 1 To lastColumnObject
                 For e = LBound(landfillTitles) To UBound(landfillTitles)
-                    If LCase(.Cells(1, j)) = LCase(landfillTitles(e, 1)) Then landfillTitleColumn = j
+                    If LCase(.Cells(1, j)) = LCase(landfillTitles(e, 1)) Then
+                        landfillTitleColumn = j
+                        mergedTitleColumns = mergedTitleColumns & CStr(landfillTitleColumn)
+                        Exit For
+                    End If
                 Next e
                 For e = LBound(weight1tTitles) To UBound(weight1tTitles)
-                    If LCase(.Cells(1, j)) = LCase(weight1tTitles(e, 1)) Then weightObjectTitleColumn = j
+                    If LCase(.Cells(1, j)) = LCase(weight1tTitles(e, 1)) Then
+                        weightObjectTitleColumn = j
+                        mergedTitleColumns = mergedTitleColumns & CStr(weightObjectTitleColumn)
+                        Exit For
+                    End If
                 Next e
                 For e = LBound(weight2Titles) To UBound(weight2Titles)
-                    If LCase(.Cells(1, j)) = LCase(weight2Titles(e, 1)) Then weightLandfillTitleColumn = j
+                    If LCase(.Cells(1, j)) = LCase(weight2Titles(e, 1)) Then
+                        weightLandfillTitleColumn = j
+                        mergedTitleColumns = mergedTitleColumns & CStr(weightLandfillTitleColumn)
+                        Exit For
+                    End If
                 Next e
             Next j
-            
-            If landfillTitleColumn = Empty Then
-                MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Полигон, которого нет в справочнике"
-                GoTo errorExit
+
+            If Not Len(mergedTitleColumns) = 3 Then
+                isErrorFile = True
+                Select Case True
+                    Case landfillTitleColumn = Empty
+                        MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Полигон, которого нет в справочнике" & vbLf & "Файл будет пропущен"
+                        ' isErrorFile = True
+                    Case weightObjectTitleColumn = Empty
+                        MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Вес объекта, которого нет в справочнике" & vbLf & "Файл будет пропущен"
+                        ' isErrorFile = True
+                    Case weightLandfillTitleColumn = Empty
+                        MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Вес объекта, которого нет в справочнике" & vbLf & "Файл будет пропущен"
+                        ' isErrorFile = True
+                    Case Else
+                        isErrorFile = False
+                End Select
+                If isErrorFile Then
+                    errorFiles = addErrorFile(errorFiles, objectWb.Name)
+                    If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
+                End If
             End If
-            If weightObjectTitleColumn = Empty Then
-                MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Вес объекта, которого нет в справочнике"
-                GoTo errorExit
-            End If
-            If weightLandfillTitleColumn = Empty Then
-                MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Вес объекта, которого нет в справочнике"
-                GoTo errorExit
-            End If
+
+
 
             lastRowObject = .Cells(Rows.Count, weightObjectTitleColumn).End(xlUp).Row
 
@@ -138,22 +172,25 @@ Sub Загрузить_данные()
             
             minFileDate = CDate(getMinTwoDArrayValue(datesOfObject))
             maxFileDate = CDate(getMaxTwoDArrayValue(datesOfObject))
-            If minFileDate = 0 or maxFileDate = 0 Then
+            If minFileDate = 0 Or maxFileDate = 0 Then
                 MsgBox "В файле " & objectWb.Name & " не обнаружены записи с вывозом" & vbLf & "minFileDate: " & minFileDate & vbLf & "maxFileDate: " & maxFileDate
+                errorFiles = addErrorFile(errorFiles, objectWb.Name)
                 If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
             End If
 
             If fileIndex = 1 Then lastDateTable = maxFileDate
             If maxFileDate > Date Then
-                MsgBox "В файле " & objectWb.Name & " обнаружены данные за будущие даты (" & lastDateTable & ")"
-                GoTo errorExit
+                MsgBox "В файле " & objectWb.Name & " обнаружены данные за будущие даты (" & lastDateTable & ")" & vbLf & "Файл будет пропущен"
+                errorFiles = addErrorFile(errorFiles, objectWb.Name)
+                If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
             End If
             If maxFileDate > lastDateTable Then lastDateTable = maxFileDate 'максимальная дата, чтобы понять надо ли к графикам добавлять строку с новым днем или нет
 
             For e = LBound(weights1Object) To UBound(weights1Object) 'перевод кг в т
                 If weights1Object(e, 1) < 0 Then
-                    MsgBox "Обнаружен вес с отрицательным значением (" & weights1Object(e, 1) & "). Номер строки: " & e + 1
-                    GoTo errorExit
+                    MsgBox "Обнаружен вес с отрицательным значением (" & weights1Object(e, 1) & "). Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
+                    errorFiles = addErrorFile(errorFiles, objectWb.Name)
+                    If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
                 End If
                 If weights1Object(e, 1) > 100 Then weights1Object(e, 1) = weights1Object(e, 1) / 1000
                 If weights2Object(e, 1) > 100 Then weights2Object(e, 1) = weights2Object(e, 1) / 1000
@@ -164,49 +201,32 @@ Sub Загрузить_данные()
                 lastrow = .Cells(1, 1).CurrentRegion.Rows.Count
                 Set findCellObject = .Range(.Cells(1, 2), .Cells(lastrow, 2)).Find(currentObject) 'ячейка с текущим объектом на итоговом листе
                 If findCellObject Is Nothing Then
-                    MsgBox "Не найдено название МПС / МСС (определяется по названию файла) из справочника на листе Объекты. Нужно проверить справочник и название файла."
-                    GoTo errorExit
+                    MsgBox "Не найдено название МПС / МСС (определяется по названию файла) из справочника на листе Объекты. Нужно проверить справочник и название файла." & vbLf & "Файл будет пропущен"
+                    errorFiles = addErrorFile(errorFiles, objectWb.Name)
+                    If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
                 End If
-            
-                ' Debug.Print findCellObject.Column
-                ' Debug.Print findCellObject.Row
-                ' Debug.Print macroWb.Worksheets("Объекты").Cells(findCellObject.Row + i, findCellObject.Column + 2).Value
 
                 currentYear = Year(Date)
-                ' If minFileDate < DateSerial(currentYear, 1, 1) Then 'проверка ошибок с датами в файле объекта (если данные за прошлый год)
-                '     a = MsgBox("В файле " & objectWb.Name & " обнаружены данные за " & Year(minFileDate) & " год, продолжить?" & vbLf & "Данные за этот период не будут пересчитаны.", vbQuestion + vbYesNo + vbDefaultButton2)
-                '     If a = vbYes Then
-                '         If minFileDate < DateSerial(currentYear, 1, 1) Then minFileDate = DateSerial(currentYear, 1, 1) '1 января текущего года
-                '         If minFileDate > maxFileDate Then    
-                '         MsgBox "В файле " & objectWb.Name & "не найдено данных за "                
-                '         Минимальная дата больше максимальной
-                '     Else
-                '         GoTo errorExit
-                '     End If
-                ' End If
-
-                If not Year(minFileDate) = Year(maxFileDate) Then
-                    a = MsgBox("В файле " & objectWb.Name & " обнаружены данные за разные годы: " & Year(minFileDate) & " и " & Year(maxFileDate) & ", пропустить файл?", vbQuestion + vbYesNo + vbDefaultButton2)
-                    If a = vbYes Then GoTo nextFile Else GoTo errorExit
-                End if
-                ' If not Year(minFileDate) = currentYear or not Year(maxFileDate) = currentYear Then
-                '     a = MsgBox("В файле " & objectWb.Name & " обнаружены данные не за текущий год, продолжить?", vbQuestion + vbYesNo + vbDefaultButton2)
-                '     If a = vbYes Then 
-                ' End if
+                If Not Year(minFileDate) = Year(maxFileDate) Then
+                    ' a = MsgBox("В файле " & objectWb.Name & " обнаружены данные за разные годы: " & Year(minFileDate) & " и " & Year(maxFileDate) & ", пропустить файл?", vbQuestion + vbYesNo + vbDefaultButton2)
+                    MsgBox "В файле " & objectWb.Name & " обнаружены данные за разные годы: " & Year(minFileDate) & " и " & Year(maxFileDate) & vbLf & "Файл будет пропущен"
+                    errorFiles = addErrorFile(errorFiles, objectWb.Name)
+                    If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
+                End If
                 
                 allDates = .Range(.Cells(1, 1), .Cells(1, lastcolumn))
                 minDateColumn = 0
                 maxDateColumn = 0
                 If Not minFileDate = maxFileDate Then
                     For i = LBound(allDates, 2) To UBound(allDates, 2)
-                        if isdate(allDates(1, i)) then allDates(1, i) = CDate(allDates(1, i))
+                        If IsDate(allDates(1, i)) Then allDates(1, i) = CDate(allDates(1, i))
                         If allDates(1, i) = minFileDate Then
                             minDateColumn = i
                             Exit For
                         End If
                     Next i
                     For i = minDateColumn To UBound(allDates, 2)
-                        if isdate(allDates(1, i)) then allDates(1, i) = CDate(allDates(1, i))
+                        If IsDate(allDates(1, i)) Then allDates(1, i) = CDate(allDates(1, i))
                         If allDates(1, i) = maxFileDate Then
                             maxDateColumn = i
                             Exit For
@@ -214,7 +234,7 @@ Sub Загрузить_данные()
                     Next i
                 Else
                     For i = LBound(allDates, 2) To UBound(allDates, 2)
-                        if isdate(allDates(1, i)) then allDates(1, i) = CDate(allDates(1, i))
+                        If IsDate(allDates(1, i)) Then allDates(1, i) = CDate(allDates(1, i))
                         If allDates(1, i) = minFileDate Then
                             minDateColumn = i
                             maxDateColumn = i
@@ -240,8 +260,9 @@ Sub Загрузить_данные()
                         Next i
                     Next j
                 Else
-                    MsgBox "Не найдены столбцы минимальной или максимальной даты. minFileDate = " & minFileDate & ", maxFileDate = " & maxFileDate
-                    GoTo errorExit
+                    MsgBox "При обработке файла " & objectWb.Name & "не найдены столбцы минимальной или максимальной даты на листе Объекты. minFileDate = " & minFileDate & ", maxFileDate = " & maxFileDate & vbLf & "Файл будет пропущен"
+                    errorFiles = addErrorFile(errorFiles, objectWb.Name)
+                    If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
                 End If
             
             End With
@@ -259,8 +280,9 @@ Sub Загрузить_данные()
                             If LCase(landfillsOfObject(e, 1)) = LCase(objects(element, 2)) Then tempLandfill = objects(element, 1)
                         Next element
                         If tempLandfill = Empty Then
-                            MsgBox "Обнаружено новое название полигона, которого нет в справочнике. Номер строки: " & e + 1 & ". Название: " & landfillsOfObject(e, 1)
-                            GoTo errorExit
+                            MsgBox "В файле " & objectWb.Name & " обнаружено новое название полигона, которого нет в справочнике. Номер строки: " & e + 1 & ". Название: " & landfillsOfObject(e, 1) & vbLf & "Файл будет пропущен"
+                            errorFiles = addErrorFile(errorFiles, objectWb.Name)
+                            If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
                         End If
                         If datesOfObject(e, 1) = macroWb.Worksheets("Объекты").Cells(1, j) Then 'нашли столбец с нужной датой
                             If tempLandfill = macroWb.Worksheets("Объекты").Cells(findCellObject.Row + i, findCellObject.Column + 2).Value Then
@@ -289,7 +311,7 @@ nextFile:
     Next 'конец for each
     
     
-    With Sheets("Объекты")
+    With macroWb.Worksheets("Объекты")
         lastRowObj = .Cells(1, 1).CurrentRegion.Rows.Count
         lastColumnObj = .Cells(1, 1).CurrentRegion.Columns.Count
         
@@ -300,7 +322,7 @@ nextFile:
             .Cells(i, lastColumnObj) = obj
         Next i
         
-        yesterdayDate = Sheets("Распределение 1 полугодие").Cells(1, 2).Value - 1
+        yesterdayDate = macroWb.Worksheets("Распределение 1 полугодие").Cells(1, 2).Value - 1
         'yesterdayDate = Date - 1
         
         Dim dates As Variant
@@ -313,7 +335,7 @@ nextFile:
         Next j
     End With
     
-    With Sheets("Распределение 1 полугодие")
+    With macroWb.Worksheets("Распределение 1 полугодие")
         lastRowSplit = .Cells(1, 1).CurrentRegion.Rows.Count
         lastColumnSplit = .Cells(1, 1).CurrentRegion.Columns.Count
         
@@ -335,8 +357,8 @@ nextFile:
             For i = 3 To lastRowSplit 'как фактически возят
                 .Cells(i, findFactTitle.Column) = 0
                 For ii = 3 To lastRowObj
-                    If .Cells(i, findLandfillColumnTitle.Column + 1) = Sheets("Объекты").Cells(ii, lastColumnObj - 1) Then
-                        .Cells(i, findFactTitle.Column) = .Cells(i, findFactTitle.Column) + Sheets("Объекты").Cells(ii, findDateColumn)
+                    If .Cells(i, findLandfillColumnTitle.Column + 1) = macroWb.Worksheets("Объекты").Cells(ii, lastColumnObj - 1) Then
+                        .Cells(i, findFactTitle.Column) = .Cells(i, findFactTitle.Column) + macroWb.Worksheets("Объекты").Cells(ii, findDateColumn)
                     End If
                 Next ii
             Next i
@@ -345,8 +367,6 @@ nextFile:
             GoTo errorExit
         End If
     End With
-    
-    Sheets("Графики").Select
     
     '-------------------- Умные таблицы ---------------------------------------------------------------------------------------
     
@@ -497,8 +517,10 @@ nextFile:
     
     '-------------------- Графики конец ---------------------------------------------------------------------------------------
     
-    
+
+
 errorExit:
+    If Not errorFiles = Empty Then MsgBox "Файлы с ошибками:" & vbLf & errorFiles
     With Application
         .AskToUpdateLinks = True
         .DisplayAlerts = True
