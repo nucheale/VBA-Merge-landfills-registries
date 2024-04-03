@@ -31,6 +31,70 @@ Sub Изменить_даты_графиков()
                 ' .ListObjects(chartTitles(e)).ListRows(n) = firstDate + n - 1
             Next n
         Next e
+
+        landfillNames = macroWb.Worksheets("Справочник").ListObjects("LandfillsList").ListColumns("Полигоны").DataBodyRange.Value
+        lastRowCharts = .Cells.SpecialCells(xlLastCell).Row
+        lastColumnCharts = .Cells.SpecialCells(xlLastCell).Column
+        lastRowChart = .ListObjects(chartTitles(1)).ListRows.Count
+        oneDayWidth = 50
+        minChartWidth = 470
+        For i = 1 To lastRowCharts 'перемещение графиков чтобы все красиво
+            For e = LBound(landfillNames, 1) To UBound(landfillNames, 1)
+                If .Cells(i, 1) = landfillNames(e, 1) Then
+                ' If InStr(.Cells(i, 1), landfillNames(e, 1)) Then
+                    .Cells(i, 2) = "Статистика ввоза на " & landfillNames(e, 1)
+                    For Each chrt In .ChartObjects
+                        If InStr(chrt.Chart.ChartTitle.Text, landfillNames(e, 1)) Then
+                            chrt.Top = .Cells(i + 1, lastColumnCharts + 2).Top
+                            chrt.Left = .Cells(i + 1, lastColumnCharts + 2).Left
+                            chrt.Chart.ChartTitle.Text = "Статистика ввоза на " & landfillNames(e, 1)
+                            chrt.Height = 510
+                            chrt.Width = WorksheetFunction.Max(minChartWidth, lastRowChart * oneDayWidth)
+                        End If
+                    Next chrt
+                End If
+            Next e
+        Next i
+        
+        
+        '----------------удаление нулевых объектов из легенды-----------------------
+
+        For Each chrt In .ChartObjects 'добавляем легенду заново
+            chrt.Chart.SetElement (msoElementLegendBottom)
+            chrt.Chart.Legend.Delete
+            chrt.Chart.SetElement (msoElementLegendBottom)
+        Next chrt
+
+        For Each tbl In .ListObjects 'заголовки всех таблиц
+            tblCounter = 1
+            Dim headers As Variant
+            ReDim headers(1 To tbl.ListColumns.Count, 1 To UBound(chartTitles))
+            For i = LBound(headers, 1) To UBound(headers, 1)
+                headers(i, tblCounter) = tbl.ListColumns(i).Name
+            Next i
+            tblCounter = tblCounter + 1
+        Next tbl
+        
+        For Each chrt In .ChartObjects
+            chrt.Chart.Legend.LegendEntries(UBound(headers, 1) - 1).Delete 'удаление Итого из легенды
+        Next chrt
+        
+        For i = LBound(chartTitles) To UBound(chartTitles)
+            For n = UBound(headers) - 1 To LBound(headers) + 1 Step -1
+                tempSum = 0
+                Set sumColumn = .ListObjects(i).ListColumns(n)
+                For Each cell In sumColumn.DataBodyRange
+                    If Not IsError(cell) Then tempSum = tempSum + CDbl(cell)
+                Next cell
+                If tempSum = 0 Then
+                    For Each chrt In .ChartObjects
+                        If InStr(chrt.Chart.ChartTitle.Text, landfillNames(i, 1)) Then 'находим нужный график, т.к. у графиков и таблиц не совпадают индексы
+                            chrt.Chart.Legend.LegendEntries(n - 1).Delete
+                        End If
+                    Next chrt
+                End If
+            Next n
+        Next i
     End With
 
 errorExit:
