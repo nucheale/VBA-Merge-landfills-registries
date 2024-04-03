@@ -130,13 +130,10 @@ Sub Загрузить_данные()
                 Select Case True
                     Case landfillTitleColumn = Empty
                         MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Полигон, которого нет в справочнике" & vbLf & "Файл будет пропущен"
-                        ' isErrorFile = True
                     Case weightObjectTitleColumn = Empty
                         MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Вес объекта, которого нет в справочнике" & vbLf & "Файл будет пропущен"
-                        ' isErrorFile = True
                     Case weightLandfillTitleColumn = Empty
                         MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Вес объекта, которого нет в справочнике" & vbLf & "Файл будет пропущен"
-                        ' isErrorFile = True
                     Case Else
                         isErrorFile = False
                 End Select
@@ -374,7 +371,6 @@ nextFile:
 
         chartTitlesTwoDim = Sheets("Справочник").ListObjects("LandfillsList").ListColumns("Для графиков").DataBodyRange.Value
         ' chartTitles = Array("ВвозНовыйСвет", "ВвозПолигонТБО", "ВвозАвтоБеркут", "ВвозЭкоПлант", "ВвозУКЛО")
-
         chartTitles = twoDimArrayToOneDim(chartTitlesTwoDim) 'двумерный массив в одномерный
         
         ' Function renamePivotTable(ByVal tbl As Variant, ByVal newName As String, startCounter)
@@ -387,10 +383,10 @@ nextFile:
         realChartNames = False
         For i = 1 To 2
             counter = 1
-            If realChartNames = False Then
+            If realChartNames = False Then 
                 For Each obj In .ListObjects
                     If obj.ShowAutoFilter Then
-                        obj.Name = "ВременноеНазвание" & counter
+                        obj.Name = "ВременноеНазвание" & counter 'уже не помню зачем это
                         counter = counter + 1
                     End If
                     ' renamePivotTable(obj, "ВременноеНазвание" & counter, 1)
