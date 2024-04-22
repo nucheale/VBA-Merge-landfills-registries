@@ -30,6 +30,10 @@ End Function
 
 Sub Загрузить_данные()
 
+    ' Dim AOAVTOPARK1_WEIGHT#, NOVIYSVETPOLIGON_WEIGHT#
+    ' AOAVTOPARK1_WEIGHT = 723.287671232877
+    ' NOVIYSVETPOLIGON_WEIGHT = 440.545808219178
+
     Dim e&, element&, i&, j&, fileIndex%
     Dim errorFiles$
     errorFiles = Empty
@@ -76,23 +80,23 @@ Sub Загрузить_данные()
 
     fileIndex = 1
     For Each file In filesToOpen
-        Set objectWb = Application.Workbooks.Open(Filename:=filesToOpen(fileIndex))
+        Set objectWb = Application.Workbooks.Open(filename:=filesToOpen(fileIndex))
     
-            currentObject = Empty
-            For e = 1 To UBound(objects) 'текущий объект по названию файла
-                If InStr(LCase(objectWb.Name), LCase(objects(e, 2))) Then currentObject = objects(e, 1)
-                If Not currentObject = Empty Then Exit For
-            Next e
-            ' Debug.Print currentObject
-            If currentObject = Empty Then
-                MsgBox "Название объекта не обнаружено в справочнике. Проверьте название файла " & objectWb.Name & vbLf & "Файл будет пропущен"
-                errorFiles = addErrorFile(errorFiles, objectWb.Name)
-                If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
-            End If
-    
-            Sort = False
-            If InStr(LCase(objectWb.Name), "обработка") Then Sort = True 'определение МСС/МПС
-            'Debug.Print Sort
+        currentObject = Empty
+        For e = 1 To UBound(objects) 'текущий объект по названию файла
+            If InStr(LCase(objectWb.Name), LCase(objects(e, 2))) Then currentObject = objects(e, 1)
+            If Not currentObject = Empty Then Exit For
+        Next e
+        ' Debug.Print currentObject
+        If currentObject = Empty Then
+            MsgBox "Название объекта не обнаружено в справочнике. Проверьте название файла " & objectWb.Name & vbLf & "Файл будет пропущен"
+            errorFiles = addErrorFile(errorFiles, objectWb.Name)
+            If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
+        End If
+
+        Sort = False
+        If InStr(LCase(objectWb.Name), "обработка") Then Sort = True 'определение МСС/МПС
+        'Debug.Print Sort
         
     
         With objectWb.Worksheets("Вывоз")
@@ -130,10 +134,13 @@ Sub Загрузить_данные()
                 Select Case True
                     Case landfillTitleColumn = Empty
                         MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Полигон, которого нет в справочнике" & vbLf & "Файл будет пропущен"
+                        ' isErrorFile = True
                     Case weightObjectTitleColumn = Empty
                         MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Вес объекта, которого нет в справочнике" & vbLf & "Файл будет пропущен"
+                        ' isErrorFile = True
                     Case weightLandfillTitleColumn = Empty
                         MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Вес объекта, которого нет в справочнике" & vbLf & "Файл будет пропущен"
+                        ' isErrorFile = True
                     Case Else
                         isErrorFile = False
                 End Select
@@ -283,8 +290,14 @@ Sub Загрузить_данные()
                         End If
                         If datesOfObject(e, 1) = macroWb.Worksheets("Объекты").Cells(1, j) Then 'нашли столбец с нужной датой
                             If tempLandfill = macroWb.Worksheets("Объекты").Cells(findCellObject.Row + i, findCellObject.Column + 2).Value Then
-                                sumW1 = sumW1 + weights1Object(e, 1)
-                                sumW2 = sumW2 + weights2Object(e, 1)
+                                ' Select Case True
+                                ' Case InStr(objectWb.Name, "Грузовой")
+                                '     sumW1 = AOAVTOPARK1_WEIGHT
+                                '     sumW2 = AOAVTOPARK1_WEIGHT
+                                ' Case Else
+                                    sumW1 = sumW1 + weights1Object(e, 1)
+                                    sumW2 = sumW2 + weights2Object(e, 1)
+                                ' End Select
                                 If Sort = False Then
                                     macroWb.Worksheets("Объекты").Cells(findCellObject.Row + i, j) = sumW1
                                     macroWb.Worksheets("Объекты").Cells(findCellObject.Row + i, j + 1) = sumW2
@@ -371,6 +384,7 @@ nextFile:
 
         chartTitlesTwoDim = Sheets("Справочник").ListObjects("LandfillsList").ListColumns("Для графиков").DataBodyRange.Value
         ' chartTitles = Array("ВвозНовыйСвет", "ВвозПолигонТБО", "ВвозАвтоБеркут", "ВвозЭкоПлант", "ВвозУКЛО")
+
         chartTitles = twoDimArrayToOneDim(chartTitlesTwoDim) 'двумерный массив в одномерный
         
         ' Function renamePivotTable(ByVal tbl As Variant, ByVal newName As String, startCounter)
@@ -383,10 +397,10 @@ nextFile:
         realChartNames = False
         For i = 1 To 2
             counter = 1
-            If realChartNames = False Then 
+            If realChartNames = False Then
                 For Each obj In .ListObjects
                     If obj.ShowAutoFilter Then
-                        obj.Name = "ВременноеНазвание" & counter 'уже не помню зачем это
+                        obj.Name = "ВременноеНазвание" & counter
                         counter = counter + 1
                     End If
                     ' renamePivotTable(obj, "ВременноеНазвание" & counter, 1)
@@ -524,3 +538,4 @@ errorExit:
     End With
 
 End Sub
+
