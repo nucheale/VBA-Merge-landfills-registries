@@ -31,6 +31,8 @@ Private Sub CommandButton1_Click()
         GoTo errorExit
     End If
     
+    If TextBox3.Value <= 0 Then GoTo errorExit2
+    
     On Error GoTo errorExit2
     entryDate = CDate(TextBox1.Value)
     entryLandfill = CStr(ComboBox1.Value)
@@ -63,7 +65,7 @@ Private Sub CommandButton3_Click()
 End Sub
 
 Private Sub ComboBox1_Change()
-    If ComboBox1.Value = "Новый Свет" Then TextBox3.Value = NS
+    If ComboBox1.Value = "Новый Свет" Then TextBox3.Value = NS Else TextBox3.Value = Empty
 End Sub
 
 
