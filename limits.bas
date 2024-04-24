@@ -28,6 +28,22 @@ Function addErrorFile(resultString, currentFilename)
     addErrorFile = resultString
 End Function
 
+' Function checkWeightsArr(allFilesArr, errorFilesArr, currentWb, weightsArr, loopIndex)
+'     Select Case True
+'         Case weightsArr(e, 1) < 0
+'             MsgBox "В файле '" & currentWb.Name & "' обнаружен вес с отрицательным значением (" & weightsArr(loopIndex, 1) & "). Номер строки: " & loopIndex + 1 & vbLf & "Файл будет пропущен"
+'             errorFilesArr = addErrorFile(errorFilesArr, currentWb.Name)
+'             If UBound(allFilesArr) = 1 Then GoTo errorExit Else: GoTo nextFile
+'         Case Not IsNumeric(weightsArr(e, 1))
+'             MsgBox "В файле '" & currentWb.Name & "' в столбце с весом обнаружен текст: '" & weightsArr(loopIndex, 1) & "'. Номер строки: " & loopIndex + 1 & vbLf & "Файл будет пропущен"
+'             errorFilesArr = addErrorFile(errorFilesArr, currentWb.Name)
+'             If UBound(allFilesArr) = 1 Then GoTo errorExit Else: GoTo nextFile
+'         Case weightsArr(loopIndex, 1) > 100
+'             weightsArr(loopIndex, 1) = weightsArr(loopIndex, 1) / 1000
+'     End Select
+' End Function
+
+
 Sub Загрузить_данные()
 
     ' Dim AOAVTOPARK1_WEIGHT#, NOVIYSVETPOLIGON_WEIGHT#
@@ -192,28 +208,9 @@ Sub Загрузить_данные()
             If maxFileDate > lastDateTable Then lastDateTable = maxFileDate 'максимальная дата, чтобы понять надо ли к графикам добавлять строку с новым днем или нет
 
             For e = LBound(weights1Object) To UBound(weights1Object) 'проверка весов, перевод кг в т
-                ' If weights1Object(e, 1) < 0 Then
-                '     MsgBox "Обнаружен вес объекта с отрицательным значением (" & weights1Object(e, 1) & "). Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
-                '     errorFiles = addErrorFile(errorFiles, objectWb.Name)
-                '     If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
-                ' ElseIf Not IsNumeric(weights1Object(e, 1)) Then
-                '     MsgBox "В столбце с весом объекта обнаружен текст: '" & weights1Object(e, 1) & "'. Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
-                '     If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
-                ' ElseIf weights1Object(e, 1) > 100 Then
-                '     weights1Object(e, 1) = weights1Object(e, 1) / 1000
-                ' End If
 
-                ' If weights2Object(e, 1) < 0 Then
-                '     MsgBox "Обнаружен вес полигона с отрицательным значением (" & weights2Object(e, 1) & "). Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
-                '     errorFiles = addErrorFile(errorFiles, objectWb.Name)
-                '     If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
-                ' ElseIf Not IsNumeric(weights2Object(e, 1)) Then
-                '     MsgBox "В столбце с весом полигона обнаружен текст: '" & weights2Object(e, 1) & "'. Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
-                '     If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
-                ' ElseIf weights2Object(e, 1) > 100 Then
-                '     weights2Object(e, 1) = weights2Object(e, 1) / 1000
-                ' End If
-
+                ' checkWeightsArr(filesToOpen, errorFiles, objectWb, weights1Object, e)
+                ' checkWeightsArr(filesToOpen, errorFiles, objectWb, weights2Object, e)
                 Select Case True
                     Case weights1Object(e, 1) < 0
                         MsgBox "В файле '" & objectWb.Name & "' обнаружен вес объекта с отрицательным значением (" & weights1Object(e, 1) & "). Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
@@ -438,7 +435,7 @@ nextFile:
         realChartNames = False
         For i = 1 To 2
             counter = 1
-            If realChartNames = False Then
+            If Not realChartNames Then
                 For Each obj In .ListObjects
                     If obj.ShowAutoFilter Then
                         obj.Name = "ВременноеНазвание" & counter
@@ -446,7 +443,7 @@ nextFile:
                     End If
                     ' renamePivotTable(obj, "ВременноеНазвание" & counter, 1)
                 Next obj
-            ElseIf realChartNames = True Then
+            ElseIf realChartNames Then
                 For Each obj In .ListObjects
                     If obj.ShowAutoFilter Then
                         obj.Name = chartTitles(counter)
@@ -554,9 +551,8 @@ nextFile:
                 Next cell
                 If tempSum = 0 Then
                     For Each chrt In .ChartObjects
-                        If InStr(chrt.Chart.ChartTitle.Text, landfillNames(i, 1)) Then 'находим нужный график, т.к. у графиков и таблиц не совпадают индексы
-                            chrt.Chart.Legend.LegendEntries(n - 1).Delete
-                        End If
+                        'находим нужный график, т.к. у графиков и таблиц не совпадают индексы 
+                        If InStr(chrt.Chart.ChartTitle.Text, landfillNames(i, 1)) Then chrt.Chart.Legend.LegendEntries(n - 1).Delete
                     Next chrt
                 End If
             Next n
@@ -579,5 +575,3 @@ errorExit:
     End With
 
 End Sub
-
-
