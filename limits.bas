@@ -104,7 +104,7 @@ Sub Загрузить_данные()
             landfillTitleColumn = Empty
             weightObjectTitleColumn = Empty
             weightLandfillTitleColumn = Empty
-            sumTitleColumns = Empty 'для проверки нашлись ли названия столбцов или нет
+            mergedTitleColumns = Empty 'для проверки нашлись ли названия столбцов или нет
             For j = 1 To lastColumnObject
                 For e = LBound(landfillTitles) To UBound(landfillTitles)
                     If LCase(.Cells(1, j)) = LCase(landfillTitles(e, 1)) Then
@@ -147,6 +147,7 @@ Sub Загрузить_данные()
                 If isErrorFile Then
                     errorFiles = addErrorFile(errorFiles, objectWb.Name)
                     If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
+                    isErrorFile = False
                 End If
             End If
 
@@ -190,14 +191,54 @@ Sub Загрузить_данные()
             End If
             If maxFileDate > lastDateTable Then lastDateTable = maxFileDate 'максимальная дата, чтобы понять надо ли к графикам добавлять строку с новым днем или нет
 
-            For e = LBound(weights1Object) To UBound(weights1Object) 'перевод кг в т
-                If weights1Object(e, 1) < 0 Then
-                    MsgBox "Обнаружен вес с отрицательным значением (" & weights1Object(e, 1) & "). Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
-                    errorFiles = addErrorFile(errorFiles, objectWb.Name)
-                    If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
-                End If
-                If weights1Object(e, 1) > 100 Then weights1Object(e, 1) = weights1Object(e, 1) / 1000
-                If weights2Object(e, 1) > 100 Then weights2Object(e, 1) = weights2Object(e, 1) / 1000
+            For e = LBound(weights1Object) To UBound(weights1Object) 'проверка весов, перевод кг в т
+                ' If weights1Object(e, 1) < 0 Then
+                '     MsgBox "Обнаружен вес объекта с отрицательным значением (" & weights1Object(e, 1) & "). Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
+                '     errorFiles = addErrorFile(errorFiles, objectWb.Name)
+                '     If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
+                ' ElseIf Not IsNumeric(weights1Object(e, 1)) Then
+                '     MsgBox "В столбце с весом объекта обнаружен текст: '" & weights1Object(e, 1) & "'. Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
+                '     If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
+                ' ElseIf weights1Object(e, 1) > 100 Then
+                '     weights1Object(e, 1) = weights1Object(e, 1) / 1000
+                ' End If
+
+                ' If weights2Object(e, 1) < 0 Then
+                '     MsgBox "Обнаружен вес полигона с отрицательным значением (" & weights2Object(e, 1) & "). Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
+                '     errorFiles = addErrorFile(errorFiles, objectWb.Name)
+                '     If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
+                ' ElseIf Not IsNumeric(weights2Object(e, 1)) Then
+                '     MsgBox "В столбце с весом полигона обнаружен текст: '" & weights2Object(e, 1) & "'. Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
+                '     If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
+                ' ElseIf weights2Object(e, 1) > 100 Then
+                '     weights2Object(e, 1) = weights2Object(e, 1) / 1000
+                ' End If
+
+                Select Case True
+                    Case weights1Object(e, 1) < 0
+                        MsgBox "В файле '" & objectWb.Name & "' обнаружен вес объекта с отрицательным значением (" & weights1Object(e, 1) & "). Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
+                        errorFiles = addErrorFile(errorFiles, objectWb.Name)
+                        If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
+                    Case Not IsNumeric(weights1Object(e, 1))
+                        MsgBox "В файле '" & objectWb.Name & "' в столбце с весом объекта обнаружен текст: '" & weights1Object(e, 1) & "'. Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
+                        errorFiles = addErrorFile(errorFiles, objectWb.Name)
+                        If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
+                    Case weights1Object(e, 1) > 100
+                        weights1Object(e, 1) = weights1Object(e, 1) / 1000
+                End Select
+
+                Select Case True
+                    Case weights2Object(e, 1) < 0
+                        MsgBox "В файле '" & objectWb.Name & "' обнаружен вес полигона с отрицательным значением (" & weights2Object(e, 1) & "). Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
+                        errorFiles = addErrorFile(errorFiles, objectWb.Name)
+                        If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
+                    Case Not IsNumeric(weights2Object(e, 1))
+                        MsgBox "В файле '" & objectWb.Name & "' в столбце с весом полигона обнаружен текст: '" & weights2Object(e, 1) & "'. Номер строки: " & e + 1 & vbLf & "Файл будет пропущен"
+                        errorFiles = addErrorFile(errorFiles, objectWb.Name)
+                        If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
+                    Case weights2Object(e, 1) > 100
+                        weights2Object(e, 1) = weights2Object(e, 1) / 1000
+                End Select
             Next e
             
             With macroWb.Worksheets("Объекты")
@@ -538,4 +579,5 @@ errorExit:
     End With
 
 End Sub
+
 
