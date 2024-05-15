@@ -112,7 +112,7 @@ Sub Загрузить_данные()
 
         Sort = False
         If InStr(LCase(objectWb.Name), "обработка") Then Sort = True 'определение МСС/МПС
-        'Debug.Print Sort
+        'Debug.Print sort
         
     
         With objectWb.Worksheets("Вывоз")
@@ -296,7 +296,7 @@ Sub Загрузить_данные()
                         For i = 3 To lastrow
                             If .Cells(i, 2) = currentObject Then
                                 For n = 0 To landfillsCount - 1
-                                    If Sort = True Then .Cells(i + n + 5, j).ClearContents Else .Cells(i + n, j).ClearContents
+                                    If Sort Then .Cells(i + n + 5, j).ClearContents Else: .Cells(i + n, j).ClearContents
                                 Next n
                             End If
                         Next i
@@ -309,14 +309,13 @@ Sub Загрузить_данные()
             
             End With
 
-            Dim sumW1, sumW2 As Double
+            Dim sumW1#, sumW2#
             sumW1 = 0
             sumW2 = 0
             tempLandfill = Empty
-            
             For j = minDateColumn To maxDateColumn + 1 Step 2 'столбец с нужной датой и массой объекта
                 For i = 0 To landfillsCount - 1 'цикл по названиям полигонов на итоговом листе в столбце D
-                    For e = LBound(weights1Object) To UBound(weights1Object)
+                    For e = LBound(weights1Object) To UBound(weights1Object) 'цикл по файлу объекта
                         tempLandfill = Empty
                         For element = 1 To UBound(objects) 'цикл чтобы определить какой полигон написан в реестре объекта
                             If LCase(landfillsOfObject(e, 1)) = LCase(objects(element, 2)) Then tempLandfill = objects(element, 1)
@@ -327,27 +326,19 @@ Sub Загрузить_данные()
                             If UBound(filesToOpen) = 1 Then GoTo errorExit Else: GoTo nextFile
                         End If
                         If datesOfObject(e, 1) = macroWb.Worksheets("Объекты").Cells(1, j) Then 'нашли столбец с нужной датой
-                            If tempLandfill = macroWb.Worksheets("Объекты").Cells(findCellObject.Row + i, findCellObject.Column + 2).Value Then
-                                ' Select Case True
-                                ' Case InStr(objectWb.Name, "Грузовой")
-                                '     sumW1 = AOAVTOPARK1_WEIGHT
-                                '     sumW2 = AOAVTOPARK1_WEIGHT
-                                ' Case Else
-                                    sumW1 = sumW1 + weights1Object(e, 1)
-                                    sumW2 = sumW2 + weights2Object(e, 1)
-                                ' End Select
-                                If Sort = False Then
-                                    macroWb.Worksheets("Объекты").Cells(findCellObject.Row + i, j) = sumW1
-                                    macroWb.Worksheets("Объекты").Cells(findCellObject.Row + i, j + 1) = sumW2
-                                ElseIf Sort = True Then
-                                    macroWb.Worksheets("Объекты").Cells(findCellObject.Row + i + landfillsCount, j) = sumW1
-                                    macroWb.Worksheets("Объекты").Cells(findCellObject.Row + i + landfillsCount, j + 1) = sumW2
-                                End If
+                            If tempLandfill = macroWb.Worksheets("Объекты").Cells(findCellObject.Row + i, findCellObject.Column + 2).Value Then 'если полигон совпадает
+                                sumW1 = sumW1 + weights1Object(e, 1)
+                                sumW2 = sumW2 + weights2Object(e, 1)
                             End If
                         End If
                     Next e
-                    sumW1 = 0
-                    sumW2 = 0
+                    If Not (sumW1 + sumW2) = 0 Then
+                        If Sort Then targetRow = findCellObject.Row + i + landfillsCount Else: targetRow = findCellObject.Row + i
+                        macroWb.Worksheets("Объекты").Cells(targetRow, j) = sumW1
+                        macroWb.Worksheets("Объекты").Cells(targetRow, j + 1) = sumW2
+                        sumW1 = 0
+                        sumW2 = 0
+                    End If
                 Next i
             Next j
             
@@ -499,8 +490,8 @@ nextFile:
         lastColumnCharts = .Cells.SpecialCells(xlLastCell).Column
         
         lastRowChart = .ListObjects(chartTitles(1)).ListRows.Count
-        oneDayWidth = 50
-        minChartWidth = 470
+        Const oneDayWidth = 50
+        Const minChartWidth = 470
         For i = 1 To lastRowCharts 'перемещение графиков чтобы все красиво
             For e = LBound(landfillNames, 1) To UBound(landfillNames, 1)
                 If .Cells(i, 1) = landfillNames(e, 1) Then
@@ -551,7 +542,7 @@ nextFile:
                 Next cell
                 If tempSum = 0 Then
                     For Each chrt In .ChartObjects
-                        'находим нужный график, т.к. у графиков и таблиц не совпадают индексы 
+                        'находим нужный график, т.к. у графиков и таблиц не совпадают индексы
                         If InStr(chrt.Chart.ChartTitle.Text, landfillNames(i, 1)) Then chrt.Chart.Legend.LegendEntries(n - 1).Delete
                     Next chrt
                 End If
