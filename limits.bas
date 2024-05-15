@@ -125,21 +125,21 @@ Sub Загрузить_данные()
                 For e = LBound(landfillTitles) To UBound(landfillTitles)
                     If LCase(.Cells(1, j)) = LCase(landfillTitles(e, 1)) Then
                         landfillTitleColumn = j
-                        mergedTitleColumns = mergedTitleColumns & CStr(landfillTitleColumn)
+                        mergedTitleColumns = mergedTitleColumns & Left(CStr(landfillTitleColumn), 1)
                         Exit For
                     End If
                 Next e
                 For e = LBound(weight1tTitles) To UBound(weight1tTitles)
                     If LCase(.Cells(1, j)) = LCase(weight1tTitles(e, 1)) Then
                         weightObjectTitleColumn = j
-                        mergedTitleColumns = mergedTitleColumns & CStr(weightObjectTitleColumn)
+                        mergedTitleColumns = mergedTitleColumns & Left(CStr(weightObjectTitleColumn), 1)
                         Exit For
                     End If
                 Next e
                 For e = LBound(weight2Titles) To UBound(weight2Titles)
                     If LCase(.Cells(1, j)) = LCase(weight2Titles(e, 1)) Then
                         weightLandfillTitleColumn = j
-                        mergedTitleColumns = mergedTitleColumns & CStr(weightLandfillTitleColumn)
+                        mergedTitleColumns = mergedTitleColumns & Left(CStr(weightLandfillTitleColumn), 1)
                         Exit For
                     End If
                 Next e
@@ -150,13 +150,10 @@ Sub Загрузить_данные()
                 Select Case True
                     Case landfillTitleColumn = Empty
                         MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Полигон, которого нет в справочнике" & vbLf & "Файл будет пропущен"
-                        ' isErrorFile = True
                     Case weightObjectTitleColumn = Empty
                         MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Вес объекта, которого нет в справочнике" & vbLf & "Файл будет пропущен"
-                        ' isErrorFile = True
                     Case weightLandfillTitleColumn = Empty
                         MsgBox "В файле " & objectWb.Name & " обнаружен заголовок столбца Вес объекта, которого нет в справочнике" & vbLf & "Файл будет пропущен"
-                        ' isErrorFile = True
                     Case Else
                         isErrorFile = False
                 End Select
@@ -208,7 +205,6 @@ Sub Загрузить_данные()
             If maxFileDate > lastDateTable Then lastDateTable = maxFileDate 'максимальная дата, чтобы понять надо ли к графикам добавлять строку с новым днем или нет
 
             For e = LBound(weights1Object) To UBound(weights1Object) 'проверка весов, перевод кг в т
-
                 ' checkWeightsArr(filesToOpen, errorFiles, objectWb, weights1Object, e)
                 ' checkWeightsArr(filesToOpen, errorFiles, objectWb, weights2Object, e)
                 Select Case True
